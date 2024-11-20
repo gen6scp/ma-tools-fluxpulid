@@ -100,7 +100,7 @@ def print_load_warning(missing: list[str], unexpected: list[str]) -> None:
     elif len(unexpected) > 0:
         print(f"Got {len(unexpected)} unexpected keys:\n\t" + "\n\t".join(unexpected))
 
-
+"""
 def load_flow_model(name: str, device: str = "cuda", hf_download: bool = True):
     # Loading Flux
     print("Init model")
@@ -122,6 +122,37 @@ def load_flow_model(name: str, device: str = "cuda", hf_download: bool = True):
         sd = load_sft(ckpt_path, device=str(device))
         missing, unexpected = model.load_state_dict(sd, strict=False)
         print_load_warning(missing, unexpected)
+    return model
+"""
+
+def load_flow_model(name: str, device: str = "cuda", hf_download: bool = True):
+    # Loading Flux
+    print("Init model")
+    ckpt_path = configs[name].ckpt_path
+    
+    # Download checkpoint if not present locally
+    if (
+        not os.path.exists(ckpt_path)
+        and configs[name].repo_id is not None
+        and configs[name].repo_flow is not None
+        and hf_download
+    ):
+        ckpt_path = hf_hub_download(configs[name].repo_id, configs[name].repo_flow, local_dir='models')
+
+    # Explicitly create the model on the CPU first
+    model = Flux(configs[name].params).to(dtype=torch.bfloat16, device='cpu')
+
+    if ckpt_path is not None:
+        print("Loading checkpoint")
+        # Load the state dictionary on CPU first
+        sd = load_sft(ckpt_path, device='cpu')
+        
+        # Load the state dictionary into the model (still on CPU)
+        missing, unexpected = model.load_state_dict(sd, strict=False)
+        print_load_warning(missing, unexpected)
+
+    # Move model to the requested device (CPU or CUDA)
+    model = model.to(device)
     return model
 
 
