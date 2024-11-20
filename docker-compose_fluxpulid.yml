@@ -1,0 +1,25 @@
+version: '2.4'  # Compatible version for Docker Compose v1.25.0
+
+services:
+  fluxpulid:
+    build: 
+     context: .
+     dockerfile: Dockerfile.fluxpulid  # Assuming Dockerfile is in the current directory
+    image: fluxpulid
+    ports:
+      - "7860:7860"
+    environment:
+      - DATADIR=/content/data   # Directory which stores models, outputs dir
+      - path_outputs=/content/app/outputs/    # Warning: If it is not located under '/content/app', you can't see history log!
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1  # Fix for potential shared memory issues with Qt applications
+      - DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+    volumes:
+      - /scratch/tmp/hf_cache:/home/user/.cache    
+      - /tmp/fluxpulid_io:/tmp/fluxpulid_io      
+    tty: true
+    runtime: nvidia  # Enable NVIDIA GPU support (requires nvidia-docker2 to be installed)
+    privileged: true  # Required to load kernel modules like FUSE
+    network_mode: "host"
+    devices:
+      - "/dev/dri:/dev/dri"
